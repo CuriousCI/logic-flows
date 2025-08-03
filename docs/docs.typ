@@ -1,6 +1,8 @@
 #import "logic.typ": *
 
-#show figure.where(kind: "constraint").or(figure.where(kind: "operation")): it => {
+#show (
+    figure.where(kind: "constraint").or(figure.where(kind: "operation"))
+): it => {
     set align(left)
     it.body
 }
@@ -42,6 +44,11 @@
 #logic[Name = String matching ```javascript /^[A-Za-z][A-Za-z\d]*$/```] \
 #logic[Multiplicity = (min: Integer $>=$ 0, max: Integer $>=$ 0 [0..1])] \
 
+// TODO: font is a global option (setting)
+// TODO: hide class style and keep just actions, or put style below
+// TODO: add global setting for theme
+// TODO: stroke-style might not be a good idea
+// TODO: warning on color contrast
 // TODO: icon for project
 // TODO: NameC (ClassName)
 // TODO: NameA (AssociationName)
@@ -74,7 +81,8 @@
 
 == Association
 
-If both roles of an association are connected to the same class, then these roles must have names, and their names must be different.
+If both roles of an association are connected to the same class, then these
+roles must have names, and their names must be different.
 
 #constraint(
     [C.Association.same_class_association_mandatory_and_different_role_names],
@@ -96,7 +104,8 @@ If both roles of an association are connected to the same class, then these role
 
 == Attribute
 
-Normally the cycle in the diagram could be removed, but identifiers are required to be unique in each class.
+Normally the cycle in the diagram could be removed, but identifiers are required
+to be unique in each class.
 
 #constraint(
     [C.Attribute.identifier_in_class],
@@ -133,3 +142,56 @@ Normally the cycle in the diagram could be removed, but identifiers are required
 //     ```
 //     ```,
 // )
+
+#pagebreak()
+
+= Design
+
+Temporary description fo the wireframe
+
+== Types
+
+On the right is a menu for defining types. It contains both basic types
+(#logic[String], #logic[Integer], etc.) and custom types derived from them. This
+section serves two purposes:
+- when creating an attribute its type should be chosen from a drop-down menu
+- when exporting the diagram as `JSON` types need to be well-defined in order to
+    process the information better _(i.e. generate first order logic predicates,
+    LaTeX macros or Typst functions)_
+
+== Components
+
+At the top there is a bar with the components you can add, respectively:
+classes, associations, generalizations and notes. Just select the component and
+add it to the diagram.
+
+== Component-specific interactions
+
+On the left, when a component is selected, a menu specific to that component
+appears. In this menu, you can do two things:
+- change the component's style
+- interact with the component
+
+The interaction could consist in
+- changing some information _(class/association name, role multiplicity,
+    attribute information)_
+- a general action _(add an attribute to the class/association class or make the
+    generalization {disjoint, complete}, etc.)_
+
+For example, if someone selects an attribute, the editable information for the
+attribute appears:
+- a *text field* to edit its name
+- a *drop-down menu* to select its type
+- a *checkbox* to decide whether it has an id
+- a *numeric field* with the minimum multiplicity (an integer from 0 and up)
+- a *numeric field* with the maximum multiplicity (an integer greater than
+    "min," or just *n*)
+
+When you hover over a component, icons appear for interacting with it (for
+example, an association can be transformed into an association class, an
+attribute can be deleted, etc.).
+
+#page(width: auto, height: 841.89pt, margin: 20pt)[
+    = Wireframe
+    #align(center + horizon, image("wireframe.svg", height: 770pt))
+]
