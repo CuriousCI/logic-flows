@@ -5,13 +5,14 @@
 
     // It doesn't work otherwise
     import * as joint from "@joint/core";
+    import ClassEditor from "$lib/components/ClassEditor.svelte";
 
     // import { dia, shapes } from "@joint/core";
     // import pkg from "@joint/core";
     // const { dia, shapes } = pkg;
 
     let paperRef: HTMLElement;
-    let selectedComponent: HTMLElement | undefined = undefined;
+    let selectedComponent: joint.dia.Element | null = null;
     let isTypesMenuOpen: boolean = false;
 
     type Tool = {
@@ -55,24 +56,49 @@
             });
         });
 
-        paper.on("blank:mousewheel", function (this: joint.dia.Paper, event) {
-            // console.log(event.originalEvent.deltaY);
-            let delta = event.originalEvent.deltaY;
-            if (delta > 0) zoomLevel -= 10;
-            else zoomLevel += 10;
-            this.scale(zoomLevel / 100);
-        });
+        paper.on(
+            "blank:mousewheel",
+            (event: joint.dia.Event, x: number, y: number, delta: number) => {
+                // console.log(event.originalEvent.deltaY);
+                // let delta = event.originalEvent.deltaY;
+                // if (delta > 0) zoomLevel -= 10;
+                // else zoomLevel += 10;
+                // this.scale(zoomLevel / 100);
+                event.preventDefault();
+                if (delta > 0) zoomLevel += 10;
+                else zoomLevel -= 10;
+                paper.scale(zoomLevel / 100);
+            },
+        );
 
-        paper.on("blank:pointerclick", function (this: joint.dia.Paper, event) {
+        paper.on("blank:pointerclick", (event: joint.dia.Event) => {
+            if (selectedComponent) {
+                selectedComponent = null;
+                return;
+            }
+            // Convert client coords to paper-local coords
+            const localPoint = paper.clientToLocalPoint(
+                event.clientX || 0,
+                event.clientY || 0,
+            );
+
             const rect1 = new joint.shapes.standard.Rectangle();
-            rect1.position(event.clientX || 0, event.clientY || 0);
+            rect1.position(localPoint.x, localPoint.y);
             rect1.resize(GRID_SIZE * 4, GRID_SIZE * 2);
+            rect1.attr({
+                body: {
+                    fill: "#FFFFFF",
+                    stroke: "#000000",
+                    strokeWidth: 1,
+                },
+            });
             rect1.addTo(graph);
         });
 
         paper.on("element:pointerdblclick", function (elementView) {
             var currentElement = elementView.model;
             currentElement.attr("body/stroke", "orange");
+            selectedComponent = currentElement;
         });
 
         paper.on("link:pointerdblclick", function (linkView) {
@@ -142,8 +168,16 @@
         const link = new joint.shapes.standard.Link();
         link.source(rect1);
         link.target(rect2);
-        link.addTo(graph);
-        link.appendLabel({
+        link.attr({
+            line: {
+                stroke: "#333333",
+                strokeWidth: 2,
+                targetMarker: {
+                    type: "none", // You can also use { d: 'M 0 0' }
+                },
+            },
+        });
+        link.label(0, {
             attrs: {
                 text: {
                     text: "to the",
@@ -151,7 +185,8 @@
             },
         });
         link.router("orthogonal");
-        // link.connector("straight", { cornerType: "line" });
+        link.connector("straight", { cornerType: "line" });
+        link.addTo(graph);
     });
 </script>
 
@@ -172,8 +207,8 @@
                 <button class="material-symbols-outlined"> zoom_in </button>
             </div>
             <!-- TODO: stack for changes -->
-            <!-- TODO: diable undo if stack is empty -->
-            <!-- TODO: diable redo current index not in stack len (somehow) -->
+            <!-- TODO: disable undo if stack is empty -->
+            <!-- TODO: disable redo current index not in stack len (somehow) -->
             <div class="flex items-center gap-3 bg-white px-3 py-2 card">
                 <button class="material-symbols-outlined"> undo </button>
                 <button disabled class="material-symbols-outlined">
