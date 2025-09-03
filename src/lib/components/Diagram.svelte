@@ -3,8 +3,10 @@
 
     // It doesn't work otherwise
     import * as joint from "@joint/core";
-    import ClassEditor from "$lib/components/ElementEditor.svelte";
     import { UMLClass } from "./UML/UMLClass";
+    import { UMLLink } from "./UML/UMLLink";
+    import { darkenHSL } from "$lib/utils/color";
+    import ComponentEditor from "$lib/components/ComponentEditor.svelte";
 
     // import { dia, shapes } from "@joint/core";
     // import pkg from "@joint/core";
@@ -13,7 +15,9 @@
     let paperRef: HTMLElement;
     let paper: joint.dia.Paper | null = null;
     let graph: joint.dia.Graph | null = null;
-    let selectedComponent = $state<joint.dia.ElementView | null>(null);
+    let selectedComponent = $state.raw<
+        joint.dia.ElementView | joint.dia.LinkView | null
+    >(null);
     let isTypesMenuOpen: boolean = false;
 
     const tools = [
@@ -90,11 +94,11 @@
         );
 
         paper.on("blank:pointerclick", (event, x, y) => {
-            if (!graph || !paper) return;
+            if (!graph) return;
             if (selectedComponent) {
                 joint.highlighters.stroke.remove(
                     selectedComponent,
-                    "highlight-selected-body"
+                    "highlight-selected",
                 );
                 selectedComponent = null;
                 return;
@@ -112,86 +116,78 @@
             umlClass.addTo(graph);
         });
 
-        paper.on("element:pointerdblclick", function (elementView) {
-
+        paper.on("cell:pointerdblclick", (cellView: joint.dia.CellView) => {
+            // prevents highliting multiple components
+            if(selectedComponent) return;
+            // for some reasons, cellView.mode.isElement() does not type restrict, so typescript needs this
+            const cellViewIsElementView =
+                cellView instanceof joint.dia.ElementView;
+            if (cellViewIsElementView || cellView instanceof joint.dia.LinkView)
+                selectedComponent = cellView;
+            else return;
             joint.highlighters.stroke.add(
-                elementView,
-                { selector: "body" }, // svg NODE (as defined in components/UML)
-                "highlight-selected-body", // highlighter ID
+                cellView,
+                cellViewIsElementView
+                    ? { selector: "body" }
+                    : { selector: "line" },
+                "highlight-selected",
                 {
-                    padding: 4,
-                    attrs: { stroke: "hsl(200, 55%, 40%)", "stroke-width": 3 },
-                },
-            );
-            selectedComponent = elementView;
-        });
-
-        paper.on("link:pointerdblclick", function (linkView) {
-            var currentLink = linkView.model;
-            currentLink.attr("line/stroke", "orange");
-            currentLink.label(0, {
-                attrs: {
-                    body: {
-                        stroke: "orange",
+                    padding: cellViewIsElementView ? 6 : 0,
+                    layer:
+                        cellViewIsElementView ? null : "back", // "back" prevents the highlighter to cover the link
+                    attrs: {
+                        stroke: cellViewIsElementView
+                            ? darkenHSL(cellView.model.attr("body/stroke"))
+                            : darkenHSL(
+                                  cellView.model.attr("line/stroke"),
+                              ),
+                        "stroke-width": cellViewIsElementView ? 3 : 12,
                     },
                 },
-            });
+            );
         });
-
-        paper.on(
-            "cell:pointerdblclick",
-            function (this: joint.dia.Paper, cellView) {
-                var isElement = cellView.model.isElement();
-                var message = (isElement ? "Element" : "Link") + " clicked";
-            },
-        );
 
         // create elements
         const class1 = new UMLClass();
-        class1.position(GRID_SIZE * 2, GRID_SIZE * 3);
+        class1.position(GRID_SIZE * 50, GRID_SIZE * 10);
         class1.resize(GRID_SIZE * 6, GRID_SIZE * 2);
         class1.set("name", "Hello");
         class1.set("attributesList", [
-            "-attr1: Data",
-            "-attr2: DataOra",
-            "-attr3: DataOra",
+            "attr1: Data",
+            "attr2: DataOra",
+            "attr3: DataOra",
         ]);
         class1.set("operationsList", ["-op1(args): void"]);
         class1.addTo(graph);
 
         const class2 = new UMLClass();
-        class2.position(GRID_SIZE * 2, GRID_SIZE * 15);
+        class2.position(GRID_SIZE * 50, GRID_SIZE * 25);
         class2.resize(GRID_SIZE * 6, GRID_SIZE * 2);
+        class2.set("name", "World");
+        class2.set("attributesList", [
+            "attr1: Periodo",
+            "attr2: FasciaOraria",
+            "attr3: GiornoSettimana",
+        ])
         class2.addTo(graph);
 
-        class1.attr("body", { stroke: "#C94A46", rx: 2, ry: 2 });
-        class2.attr("body", { stroke: "#C94A46", rx: 2, ry: 2 });
+        class1.attr("body", { stroke: "hsl(2, 55%, 53%)", rx: 2, ry: 2 });
+        class2.attr("body", { stroke: "hsl(2, 55%, 53%)", rx: 2, ry: 2 });
 
-        class1.attr("label", { text: "Hello", fill: "#353535" });
-        class2.attr("label", { text: "World!", fill: "#353535" });
+        class1.attr("label", { fill: "hsl(0, 0%, 21%)" });
+        class2.attr("label", { fill: "hsl(0, 0%, 21%)" });
 
-        // create link
-        const link = new joint.shapes.standard.Link();
+        const link = new UMLLink();
         link.source(class1);
         link.target(class2);
-        link.attr({
-            line: {
-                stroke: "#333333",
-                strokeWidth: 2,
-                targetMarker: {
-                    type: "none", // You can also use { d: 'M 0 0' }
-                },
-            },
+
+        link.set({
+            sourceMultiplicity: "1",
+            name: "to the",
+            targetMultiplicity: "0..*",
         });
-        link.label(0, {
-            attrs: {
-                text: {
-                    text: "to the",
-                },
-            },
-        });
-        link.router("orthogonal");
-        //link.connector("straight", { cornerType: "line" });
+
+        link.router("manhattan");
         link.addTo(graph);
 
         return () => {
@@ -217,7 +213,7 @@
 
         {#if selectedComponent}
             <div class="absolute top-10 left-10 bg-red-500 w-[200px] h-4/5">
-                <ClassEditor elementView={selectedComponent} />
+                <ComponentEditor component={selectedComponent.model} />
             </div>
         {/if}
 

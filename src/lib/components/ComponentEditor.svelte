@@ -2,11 +2,16 @@
     import * as joint from "@joint/core";
     import { darkenHSL, getBorderColor } from "$lib/utils/color";
 
-    const { elementView }: { elementView: joint.dia.ElementView } = $props();
-    const element = elementView.model;
-    let className: string = $state(element.get("name") || "");
-    let attributes: string[] = $state.raw(element.get("attributesList") || []);
-    let operations: string[] = $state.raw(element.get("operationsList") || []);
+    const { component }: { component: joint.dia.Element | joint.dia.Link } =
+        $props();
+    let componentIsElement = component instanceof joint.dia.Element;
+    let name: string = $state(component.get("name") || "");
+    let attributes: string[] = $state.raw(
+        component.get("attributesList") || [],
+    );
+    let operations: string[] = $state.raw(
+        component.get("operationsList") || [],
+    );
 
     const strokeFills = [
         { color: "hsl(0,0%,100%)" },
@@ -46,7 +51,7 @@
     ) => {
         e.preventDefault();
 
-        element.attr("body/fill", color);
+        component.attr("body/fill", color);
     };
 
     const changeStrokeColor = (
@@ -55,7 +60,9 @@
     ) => {
         e.preventDefault();
 
-        element.attr("body/stroke", darkenHSL(color));
+        if (component instanceof joint.dia.ElementView)
+            component.attr("body/stroke", darkenHSL(color));
+        else component.attr("line/stroke", color);
     };
 
     const changeFillStyle = (
@@ -73,7 +80,8 @@
     ) => {
         e.preventDefault();
 
-        element.attr("body/strokeDasharray", style);
+        if (componentIsElement) component.attr("body/strokeDasharray", style);
+        else component.attr("line/strokeDasharray", style);
     };
 
     const changeStrokeWidth = (
@@ -82,15 +90,17 @@
     ) => {
         e.preventDefault();
 
-        element.attr("body/strokeWidth", strokeWidth);
+        if (componentIsElement) component.attr("body/strokeWidth", strokeWidth);
+        else component.attr("line/strokeWidth", strokeWidth + 1);
     };
 
-    const changeClassName = (
+    const changeName = (
         e: Event & { currentTarget: EventTarget & HTMLInputElement },
     ) => {
         e.preventDefault();
-
-        element.set("name", className);
+        // for some reasons, jointjs needs type narrowing here
+        if (component instanceof joint.dia.Link) component.set("name", name);
+        else component.set("name", name);
     };
 
     const addAttribute = (
@@ -98,34 +108,38 @@
     ) => {
         e.preventDefault();
 
+        if (component instanceof joint.dia.Link) return;
         attributes = [...attributes, "-attr: Prova"];
-        element.set("attributesList", attributes);
-    }
+        component.set("attributesList", attributes);
+    };
 
     const addOperation = (
         e: MouseEvent & { currentTarget: EventTarget & HTMLButtonElement },
     ) => {
         e.preventDefault();
+        if (component instanceof joint.dia.Link) return;
 
         operations = [...operations, "-op(args): void"];
-        element.set("operationsList", operations);
-    }
+        component.set("operationsList", operations);
+    };
 </script>
 
 <div class="p-4">
     <div>
-        <p>Fill</p>
-        <div class="flex-[1_1_100%]">
-            {#each strokeFills as strokeFill, i}
-                <button
-                    class={`min-w-4 min-h-4 mx-1 first:ml-0 last:mr-0 cursor-pointer`}
-                    style={`background-color: ${strokeFill.color}; border: solid 2px ${getBorderColor(strokeFill.color)};`}
-                    aria-label={`stroke-${i}`}
-                    onclick={(e) => changeFillColor(e, strokeFill.color)}
-                >
-                </button>
-            {/each}
-        </div>
+        {#if componentIsElement}
+            <p>Fill</p>
+            <div class="flex-[1_1_100%]">
+                {#each strokeFills as strokeFill, i}
+                    <button
+                        class={`min-w-4 min-h-4 mx-1 first:ml-0 last:mr-0 cursor-pointer`}
+                        style={`background-color: ${strokeFill.color}; border: solid 2px ${getBorderColor(strokeFill.color)};`}
+                        aria-label={`stroke-${i}`}
+                        onclick={(e) => changeFillColor(e, strokeFill.color)}
+                    >
+                    </button>
+                {/each}
+            </div>
+        {/if}
         <p>Stroke</p>
         <div class="flex-[1_1_100%]">
             {#each strokes as stroke, i}
@@ -138,17 +152,19 @@
                 </button>
             {/each}
         </div>
-        <p>Fill style</p>
-        <div class="flex-[1_1_100%]">
-            {#each fillStyles as fillStyle, i}
-                <button
-                    class={`min-w-4 min-h-4 mx-1 first:ml-0 last:mr-0 bg-white cursor-pointer`}
-                    aria-label={`fillStyle-${i}`}
-                    onclick={(e) => changeFillStyle(e, fillStyle.value)}
-                >
-                </button>
-            {/each}
-        </div>
+        {#if componentIsElement}
+            <p>Fill style</p>
+            <div class="flex-[1_1_100%]">
+                {#each fillStyles as fillStyle, i}
+                    <button
+                        class={`min-w-4 min-h-4 mx-1 first:ml-0 last:mr-0 bg-white cursor-pointer`}
+                        aria-label={`fillStyle-${i}`}
+                        onclick={(e) => changeFillStyle(e, fillStyle.value)}
+                    >
+                    </button>
+                {/each}
+            </div>
+        {/if}
         <p>Stroke style</p>
         <div class="flex-[1_1_100%]">
             {#each strokeStyles as strokeStyle, i}
@@ -196,11 +212,13 @@
         </div>
     </div>
     <div>
-        <h3 class="text-xl text-center">Class</h3>
+        <h3 class="text-xl text-center">
+            {component instanceof joint.dia.Element ? "Class" : "Association"}
+        </h3>
         <h4>Name</h4>
         <input
             type="text"
-            bind:value={className}
+            bind:value={name}
             class="
                 w-full
                 rounded-md
@@ -217,9 +235,15 @@
 
                 transition
             "
-            onchange={(e) => changeClassName(e)}
+            oninput={(e) => changeName(e)}
         />
-        <button class="cursor-pointer" onclick={(e) => addAttribute(e)}> + add attribute </button>
-        <button class="cursor-pointer" onclick={(e) => addOperation(e)}>+ add operation</button>
+        {#if componentIsElement}
+            <button class="cursor-pointer" onclick={(e) => addAttribute(e)}>
+                + add attribute
+            </button>
+            <button class="cursor-pointer" onclick={(e) => addOperation(e)}>
+                + add operation
+            </button>
+        {/if}
     </div>
 </div>

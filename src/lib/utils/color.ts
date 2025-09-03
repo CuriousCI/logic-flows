@@ -4,11 +4,15 @@ export function darkenHSL(hslString: string, amount = 20): string {
 
   if (!match) return hslString;
 
-  const h = parseFloat(match[1]);
+  let h = parseFloat(match[1]);
   const s = parseFloat(match[2]);
   let l = parseFloat(match[3]);
 
   l = Math.max(0, l - amount);
+
+  if(h == 0) { 
+    return 'hsl(0, 70%, 40%)';
+  }
 
   return `hsl(${h}, ${s}%, ${l}%)`;
 }

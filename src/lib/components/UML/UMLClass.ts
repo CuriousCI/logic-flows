@@ -57,7 +57,7 @@ export const UMLClass = joint.dia.Element.define('custom.UMLClass', {
             fill: '#000000',
             textAnchor: 'left',
             refX: 5,
-            refY: 0, // Verrà aggiornato
+            refY: 0,
             textVerticalAnchor: 'top',
         }
     }
@@ -107,7 +107,7 @@ export const UMLClass = joint.dia.Element.define('custom.UMLClass', {
         const attributes = isStringArray(this.get('attributesList')) ? this.get('attributesList') : [];
         const operations = isStringArray(this.get('operationsList')) ? this.get('operationsList') : [];
 
-        const markup: any[] = [
+        const markup = [
             { tagName: 'rect', selector: 'body' },
             { tagName: 'line', selector: 'headerDivider' },
             { tagName: 'line', selector: 'attributesDivider' },
@@ -149,11 +149,11 @@ export const UMLClass = joint.dia.Element.define('custom.UMLClass', {
                 textVerticalAnchor: 'top',
                 fontSize,
                 fill: '#000',
-                // textWrap: {
-                //     width: `calc(w - ${leftPadding})`,
-                //     height: lineHeight,
-                //     ellipsis: true
-                // }
+                textWrap: {
+                    width: `calc(w - ${leftPadding})`,
+                    height: lineHeight,
+                    ellipsis: true
+                }
             };
 
             cursorY += lineHeight;
@@ -180,11 +180,11 @@ export const UMLClass = joint.dia.Element.define('custom.UMLClass', {
                 textVerticalAnchor: 'top',
                 fontSize,
                 fill: '#000',
-                // textWrap: {
-                //     width: `calc(w - ${leftPadding})`,
-                //     height: lineHeight,
-                //     ellipsis: true
-                // }
+                textWrap: {
+                    width: `calc(w - ${leftPadding})`,
+                    height: lineHeight,
+                    ellipsis: true
+                }
             };
 
             cursorY += lineHeight;
