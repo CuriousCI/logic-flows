@@ -1,5 +1,4 @@
 <script lang="ts">
-
     const GRID_SIZE = 16;
 
     // It doesn't work otherwise
@@ -14,7 +13,7 @@
     let paperRef: HTMLElement;
     let paper: joint.dia.Paper | null = null;
     let graph: joint.dia.Graph | null = null;
-    let selectedComponent = $state<joint.dia.Element | null>(null);
+    let selectedComponent = $state<joint.dia.ElementView | null>(null);
     let isTypesMenuOpen: boolean = false;
 
     const tools = [
@@ -29,30 +28,30 @@
     let selectedTool = $state.raw(tools[0]);
     let zoomLevel: number = $state(100);
 
-    function resetAll(paper: joint.dia.Paper) {
-        paper.drawBackground({
-            color: "white",
-        });
+    // function resetAll(paper: joint.dia.Paper) {
+    //     paper.drawBackground({
+    //         color: "white",
+    //     });
 
-        var elements = paper.model.getElements();
-        for (var i = 0, ii = elements.length; i < ii; i++) {
-            var currentElement = elements[i];
-            currentElement.attr("body/stroke", "black");
-        }
+    //     var elements = paper.model.getElements();
+    //     for (var i = 0, ii = elements.length; i < ii; i++) {
+    //         var currentElement = elements[i];
+    //         currentElement.attr("body/stroke", "black");
+    //     }
 
-        var links = paper.model.getLinks();
-        for (var j = 0, jj = links.length; j < jj; j++) {
-            var currentLink = links[j];
-            currentLink.attr("line/stroke", "black");
-            currentLink.label(0, {
-                attrs: {
-                    body: {
-                        stroke: "black",
-                    },
-                },
-            });
-        }
-    }
+    //     var links = paper.model.getLinks();
+    //     for (var j = 0, jj = links.length; j < jj; j++) {
+    //         var currentLink = links[j];
+    //         currentLink.attr("line/stroke", "black");
+    //         currentLink.label(0, {
+    //             attrs: {
+    //                 body: {
+    //                     stroke: "black",
+    //                 },
+    //             },
+    //         });
+    //     }
+    // }
 
     // this runs only onMount
     $effect(() => {
@@ -91,8 +90,12 @@
         );
 
         paper.on("blank:pointerclick", (event, x, y) => {
-            if (!graph) return;
+            if (!graph || !paper) return;
             if (selectedComponent) {
+                joint.highlighters.stroke.remove(
+                    selectedComponent,
+                    "highlight-selected-body"
+                );
                 selectedComponent = null;
                 return;
             }
@@ -110,9 +113,17 @@
         });
 
         paper.on("element:pointerdblclick", function (elementView) {
-            var currentElement = elementView.model;
-            currentElement.attr("body/stroke", "orange");
-            selectedComponent = currentElement;
+
+            joint.highlighters.stroke.add(
+                elementView,
+                { selector: "body" }, // svg NODE (as defined in components/UML)
+                "highlight-selected-body", // highlighter ID
+                {
+                    padding: 4,
+                    attrs: { stroke: "hsl(200, 55%, 40%)", "stroke-width": 3 },
+                },
+            );
+            selectedComponent = elementView;
         });
 
         paper.on("link:pointerdblclick", function (linkView) {
@@ -132,7 +143,6 @@
             function (this: joint.dia.Paper, cellView) {
                 var isElement = cellView.model.isElement();
                 var message = (isElement ? "Element" : "Link") + " clicked";
-                resetAll(this);
             },
         );
 
@@ -140,9 +150,13 @@
         const class1 = new UMLClass();
         class1.position(GRID_SIZE * 2, GRID_SIZE * 3);
         class1.resize(GRID_SIZE * 6, GRID_SIZE * 2);
-        class1.set("name", "Hello")
-        class1.set("attributesList", ["-attr1: Data", "-attr2: DataOra", "-attr3: DataOra"])
-        class1.set("operationsList", ["-op1(args): void"])
+        class1.set("name", "Hello");
+        class1.set("attributesList", [
+            "-attr1: Data",
+            "-attr2: DataOra",
+            "-attr3: DataOra",
+        ]);
+        class1.set("operationsList", ["-op1(args): void"]);
         class1.addTo(graph);
 
         const class2 = new UMLClass();
@@ -203,7 +217,7 @@
 
         {#if selectedComponent}
             <div class="absolute top-10 left-10 bg-red-500 w-[200px] h-4/5">
-                <ClassEditor element={selectedComponent} />
+                <ClassEditor elementView={selectedComponent} />
             </div>
         {/if}
 

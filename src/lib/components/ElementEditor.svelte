@@ -2,7 +2,8 @@
     import * as joint from "@joint/core";
     import { darkenHSL, getBorderColor } from "$lib/utils/color";
 
-    const { element }: { element: joint.dia.Element } = $props();
+    const { elementView }: { elementView: joint.dia.ElementView } = $props();
+    const element = elementView.model;
     let className: string = $state(element.get("name") || "");
     let attributes: string[] = $state.raw(element.get("attributesList") || []);
     let operations: string[] = $state.raw(element.get("operationsList") || []);
