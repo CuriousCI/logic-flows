@@ -4,14 +4,10 @@
 
     const { component }: { component: joint.dia.Element | joint.dia.Link } =
         $props();
-    let componentIsElement = component instanceof joint.dia.Element;
-    let name: string = $state(component.get("name") || "");
-    let attributes: string[] = $state.raw(
-        component.get("attributesList") || [],
-    );
-    let operations: string[] = $state.raw(
-        component.get("operationsList") || [],
-    );
+    let componentIsElement = $derived(component instanceof joint.dia.Element);
+    let name: string = $derived(component.get("name") || "");
+    let attributes: string[] = $derived(component.get("attributesList") || []);
+    let operations: string[] = $derived(component.get("operationsList") || []);
 
     const strokeFills = [
         { color: "hsl(0,0%,100%)" },
@@ -60,8 +56,7 @@
     ) => {
         e.preventDefault();
 
-        if (component instanceof joint.dia.ElementView)
-            component.attr("body/stroke", darkenHSL(color));
+        if (componentIsElement) component.attr("body/stroke", darkenHSL(color));
         else component.attr("line/stroke", color);
     };
 

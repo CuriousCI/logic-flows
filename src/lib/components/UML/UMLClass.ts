@@ -91,7 +91,7 @@ export const UMLClass = joint.dia.Element.define('custom.UMLClass', {
 
     initialize: function (this: IUMLClass) {
         joint.dia.Element.prototype.initialize.apply(this, arguments as any);
-        this.on('change:attrs change:name change:attributesList change:operationsList', this.updateLayout);
+        this.on('change:size change:attrs change:name change:attributesList change:operationsList', this.updateLayout);
         this.updateLayout();
     },
 
@@ -190,7 +190,7 @@ export const UMLClass = joint.dia.Element.define('custom.UMLClass', {
             cursorY += lineHeight;
         }
 
-        const totalHeight = Math.max(50, cursorY + padding);
+        const totalHeight = Math.max(Math.max(50, cursorY + padding), this.size().height);
         this.attr(attrs);
         this.resize(width, totalHeight);
     }

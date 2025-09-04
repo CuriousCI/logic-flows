@@ -7,6 +7,7 @@
     import { UMLLink } from "./UML/UMLLink";
     import { darkenHSL } from "$lib/utils/color";
     import ComponentEditor from "$lib/components/ComponentEditor.svelte";
+    import { ResizeTool } from "./JointJSTools/Resize";
 
     // import { dia, shapes } from "@joint/core";
     // import pkg from "@joint/core";
@@ -96,6 +97,7 @@
         paper.on("blank:pointerclick", (event, x, y) => {
             if (!graph) return;
             if (selectedComponent) {
+                selectedComponent.removeTools();
                 joint.highlighters.stroke.remove(
                     selectedComponent,
                     "highlight-selected",
@@ -118,13 +120,32 @@
 
         paper.on("cell:pointerdblclick", (cellView: joint.dia.CellView) => {
             // prevents highliting multiple components
-            if(selectedComponent) return;
+            if (selectedComponent) {
+                joint.highlighters.stroke.remove(
+                    selectedComponent,
+                    "highlight-selected",
+                );
+            }
             // for some reasons, cellView.mode.isElement() does not type restrict, so typescript needs this
             const cellViewIsElementView =
                 cellView instanceof joint.dia.ElementView;
-            if (cellViewIsElementView || cellView instanceof joint.dia.LinkView)
+            if (
+                cellViewIsElementView ||
+                cellView instanceof joint.dia.LinkView
+            ) {
                 selectedComponent = cellView;
-            else return;
+                if (cellViewIsElementView) {
+                    cellView.addTools(
+                        new joint.dia.ToolsView({
+                            tools: [
+                                new ResizeTool({
+                                    selector: "body",
+                                }),
+                            ],
+                        }),
+                    );
+                }
+            } else return;
             joint.highlighters.stroke.add(
                 cellView,
                 cellViewIsElementView
@@ -133,18 +154,45 @@
                 "highlight-selected",
                 {
                     padding: cellViewIsElementView ? 6 : 0,
-                    layer:
-                        cellViewIsElementView ? null : "back", // "back" prevents the highlighter to cover the link
+                    layer: cellViewIsElementView ? null : "back", // "back" prevents the highlighter to cover the link
                     attrs: {
                         stroke: cellViewIsElementView
                             ? darkenHSL(cellView.model.attr("body/stroke"))
-                            : darkenHSL(
-                                  cellView.model.attr("line/stroke"),
-                              ),
+                            : darkenHSL(cellView.model.attr("line/stroke")),
                         "stroke-width": cellViewIsElementView ? 3 : 12,
                     },
                 },
             );
+        });
+
+        let isPanning = $state.raw(false);
+
+        paper.on({
+            "blank:pointerdown": (evt, x, y) => {
+                evt.preventDefault();
+                evt.stopPropagation();
+                isPanning = true;
+                evt.data = { x, y };
+            },
+            "blank:pointermove cell:pointermove": (evt) => {
+                if(!isPanning) return;
+                // this is a joint.dia.Event as long as isPanning = true
+                evt.preventDefault();
+                evt.stopPropagation();
+                if(!paper) return;
+                const currentPoint = paper.clientToLocalPoint(evt.clientX ?? 0, evt.clientY ?? 0);
+                const dx = (currentPoint.x ?? 0) - evt.data.x;
+                const dy = (currentPoint.y ?? 0) - evt.data.y;
+                
+                const translate = paper.translate();
+                paper.translate(translate.tx + dx, translate.ty + dy);
+            },
+            "blank:pointerup cell:pointerup": (evt) => {
+                // this is a joint.dia.Event as long as isPanning = true
+                if(!isPanning) return;
+                evt.preventDefault();
+                isPanning = false;
+            }
         });
 
         // create elements
@@ -168,7 +216,7 @@
             "attr1: Periodo",
             "attr2: FasciaOraria",
             "attr3: GiornoSettimana",
-        ])
+        ]);
         class2.addTo(graph);
 
         class1.attr("body", { stroke: "hsl(2, 55%, 53%)", rx: 2, ry: 2 });
